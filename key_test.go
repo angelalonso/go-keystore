@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	//"bytes"
+	//"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,11 +11,12 @@ import (
 
 func TestNewKey(t *testing.T) {
 	// Start the service
-	jsonData := map[string]string{"user": "Nic", "pubkey": "Raboy"}
-	jsonValue, _ := json.Marshal(jsonData)
-	response, err := http.Post("http://0.0.0.0:8400/key", "application/json", bytes.NewBuffer(jsonValue))
+	//jsonData := map[string]string{"user": "Nic", "pubkey": "Raboy"}
+	//jsonValue, _ := json.Marshal(jsonData)
+	//response, err := http.Post("http://0.0.0.0:8400/key", "application/json", bytes.NewBuffer(jsonValue))
+	response, err := http.Get("http://0.0.0.0:8400/health")
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
+		t.Errorf("The HTTP request failed with error %s\n", err)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
 		fmt.Println(string(data))
