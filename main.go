@@ -22,7 +22,7 @@ func main() {
 	//  curl -H "Content-Type: application/json" -d '{"user":"hey","pubkey":"hoooo"}' -X POST http://127.0.0.1:8400/key
 	router.HandleFunc("/health", Health).Methods("GET")
 	router.HandleFunc("/key", AddKey).Methods("POST")
-	router.HandleFunc("/key/{userkey}", GetKey).Methods("GET")
+	router.HandleFunc("/key/", GetKey).Methods("GET")
 	log.Fatal(http.ListenAndServe(":8400", router))
 }
 
@@ -43,9 +43,18 @@ func WriteKey(user string, key string) {
 	if err != nil {
 		fmt.Printf("Writing to File failed with error %s\n", err)
 	}
-
 }
 
 func GetKey(w http.ResponseWriter, r *http.Request) {
+	user, _ := r.URL.Query()["user"]
+	fmt.Println(ReadKey(user[0]))
+}
+
+func ReadKey(user string) string {
+	dat, err := ioutil.ReadFile(user + ".pub")
+	if err != nil {
+		fmt.Printf("Reading from File failed with error %s\n", err)
+	}
+	return string(dat)
 
 }
