@@ -53,7 +53,7 @@ func AddKeyFile(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer file.Close()
-	name := strings.Split(header.Filename, ".")
+	strings.Split(header.Filename, ".")
 	// Copy the file data to my buffer
 	io.Copy(&Buf, file)
 	// do something with the contents...
@@ -79,6 +79,7 @@ func WriteKey(user string, key string) {
 func GetKey(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.URL.Query()["user"]
 	fmt.Println(ReadKey(user[0]))
+	respondWithJSON(w, http.StatusOK, ReadKey(user[0]))
 }
 
 func ReadKey(user string) string {
@@ -87,5 +88,13 @@ func ReadKey(user string) string {
 		fmt.Printf("Reading from File failed with error %s\n", err)
 	}
 	return string(dat)
+}
 
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	//https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
+	response, _ := json.Marshal(payload)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(response)
 }
