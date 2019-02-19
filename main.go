@@ -7,7 +7,7 @@ import (
 	//"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net/http"
 	"strings"
 	//	"os"
@@ -18,24 +18,32 @@ type Key struct {
 	PubKey string `json:"pubkey"`
 }
 
+var a App
+
 var keys []Key
 
 func main() {
-  a := App{}
-  a.Initialize()
-  a.Run(":8400")
+	a = App{}
+	a.Initialize()
+	a.Run(":8400")
 	//a.Router = mux.NewRouter()
 	// call with:
 	//  curl -H "Content-Type: application/json" -d '{"user":"hey","pubkey":"hoooo"}' -X POST http://127.0.0.1:8400/key
-	a.Router.HandleFunc("/health", Health).Methods("GET")
-	a.Router.HandleFunc("/key", AddKey).Methods("POST")
-	a.Router.Path("/keyfile").Methods("POST").HandlerFunc(AddKeyFile)
-	a.Router.HandleFunc("/key/", GetKey).Methods("GET")
-	log.Fatal(http.ListenAndServe(":8400", a.Router))
+	/*
+		a.Router.HandleFunc("/health", Health).Methods("GET")
+		a.Router.HandleFunc("/key", AddKey).Methods("POST")
+		a.Router.Path("/keyfile").Methods("POST").HandlerFunc(AddKeyFile)
+		a.Router.HandleFunc("/key/", GetKey).Methods("GET")
+		log.Fatal(http.ListenAndServe(":8400", a.Router))
+	*/
 }
 
 func Health(w http.ResponseWriter, r *http.Request) {
-	return
+	respondWithJSON(w, http.StatusOK, "ok")
+}
+
+func CatchAll(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusOK, "ok")
 }
 
 func AddKey(w http.ResponseWriter, r *http.Request) {
