@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,17 +21,17 @@ type Key struct {
 var keys []Key
 
 func main() {
-	router := mux.NewRouter()
+  a := App{}
+  a.Initialize()
+  a.Run(":8400")
+	//a.Router = mux.NewRouter()
 	// call with:
 	//  curl -H "Content-Type: application/json" -d '{"user":"hey","pubkey":"hoooo"}' -X POST http://127.0.0.1:8400/key
-	router.HandleFunc("/health", Health).Methods("GET")
-	router.HandleFunc("/key", AddKey).Methods("POST")
-	router.
-		Path("/keyfile").
-		Methods("POST").
-		HandlerFunc(AddKeyFile)
-	router.HandleFunc("/key/", GetKey).Methods("GET")
-	log.Fatal(http.ListenAndServe(":8400", router))
+	a.Router.HandleFunc("/health", Health).Methods("GET")
+	a.Router.HandleFunc("/key", AddKey).Methods("POST")
+	a.Router.Path("/keyfile").Methods("POST").HandlerFunc(AddKeyFile)
+	a.Router.HandleFunc("/key/", GetKey).Methods("GET")
+	log.Fatal(http.ListenAndServe(":8400", a.Router))
 }
 
 func Health(w http.ResponseWriter, r *http.Request) {
