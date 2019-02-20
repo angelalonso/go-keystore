@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+  "os"
 	"strings"
 )
 
@@ -28,25 +29,21 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) initializeRoutes() {
+  //  curl http://0.0.0.0:8400/health
 	a.Router.HandleFunc("/health", a.Health).Methods("GET")
-	a.Router.HandleFunc("/key", a.AddKey).Methods("POST")
-	a.Router.Path("/keyfile").Methods("POST").HandlerFunc(a.AddKeyFile)
-	a.Router.HandleFunc("/key/", a.GetKey).Methods("GET")
+  // curl -X POST -F 'file=@user1_key.pub' http://0.0.0.0:8400/addkey/\?user\=user1
+	a.Router.Path("/addkey/").Methods("POST").HandlerFunc(a.AddKeyFile)
+  // curl http://0.0.0.0:8400/getkey/\?user\=user1
+	a.Router.HandleFunc("/getkey/", a.GetKey).Methods("GET")
 }
 
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "ok")
 }
 
-func (a *App) AddKey(w http.ResponseWriter, r *http.Request) {
-	var newkey Key
-	_ = json.NewDecoder(r.Body).Decode(&newkey)
-	// TODO: check error
-	WriteKey(newkey.User, newkey.PubKey)
-}
-
 func (a *App) AddKeyFile(w http.ResponseWriter, r *http.Request) {
 	//https://stackoverflow.com/questions/40684307/how-can-i-receive-an-uploaded-file-using-a-golang-net-http-server
+	user, _ := r.URL.Query()["user"]
 	var Buf bytes.Buffer
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -60,6 +57,7 @@ func (a *App) AddKeyFile(w http.ResponseWriter, r *http.Request) {
 	// I normally have a struct defined and unmarshal into a struct, but this will
 	// work as an example
 	contents := Buf.String()
+	WriteKey(user[0], contents)
 	fmt.Println(contents)
 	// I reset the buffer in case I want to use it again
 	// reduces memory allocations in more intense projects
@@ -84,6 +82,9 @@ func ReadKey(user string) string {
 }
 
 func WriteKey(user string, key string) {
+  if _, err_pathexists := os.Stat(keysPath); os.IsNotExist(err_pathexists) {
+    os.MkdirAll(keysPath, os.ModePerm)
+  }
 	err := ioutil.WriteFile(keysPath+"/"+user+".pub", []byte(key), 0644)
 	if err != nil {
 		fmt.Printf("Writing to File failed with error %s\n", err)
