@@ -1,10 +1,14 @@
 package main
 
 import (
-	"log"
+	"bytes"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -38,19 +42,15 @@ func TestAddKey(t *testing.T) {
 	// Delete the keys folder, does it recreate it?
 	os.RemoveAll(keysPath)
 	// does it upload a key from a file?
-	file, err := os.Open("./test.pub")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+	addkey_body, writer := MultipartUpload("./test.pub")
+	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", addkey_body)
+	addkey_req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", file)
 	addkey_rsp := executeRequest(addkey_req)
 
 	checkResponseCode(t, http.StatusOK, addkey_rsp.Code)
-
-	if body := addkey_rsp.Body.String(); body != `"ok"` {
-		t.Errorf("Expected an 'ok' message. Got %s", body)
+	if body := addkey_rsp.Body.String(); body != `` {
+		t.Errorf("Expected an empty message. Got %s", body)
 	}
 	// does the key have a username, does it alert if not?
 	// does the key have a public key, does it alert if not?
@@ -77,6 +77,32 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 	a.Router.ServeHTTP(rr, req)
 	return rr
+}
+
+func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
+	paramName := "file"
+	params := map[string]string{}
+
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = io.Copy(part, file)
+	for key, val := range params {
+		_ = writer.WriteField(key, val)
+	}
+	err = writer.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return body, writer
 }
 
 func checkResponseCode(t *testing.T, expected, actual int) {
