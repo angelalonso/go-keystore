@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -35,7 +36,22 @@ func TestHealth(t *testing.T) {
 // test adding a new key
 func TestAddKey(t *testing.T) {
 	// Delete the keys folder, does it recreate it?
+	os.RemoveAll(keysPath)
 	// does it upload a key from a file?
+	file, err := os.Open("./test.pub")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", file)
+	addkey_rsp := executeRequest(addkey_req)
+
+	checkResponseCode(t, http.StatusOK, addkey_rsp.Code)
+
+	if body := addkey_rsp.Body.String(); body != `"ok"` {
+		t.Errorf("Expected an 'ok' message. Got %s", body)
+	}
 	// does the key have a username, does it alert if not?
 	// does the key have a public key, does it alert if not?
 	// does it save it to a file?

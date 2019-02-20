@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-  "os"
+	"os"
 	"strings"
 )
 
@@ -29,11 +29,11 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) initializeRoutes() {
-  //  curl http://0.0.0.0:8400/health
+	//  curl http://0.0.0.0:8400/health
 	a.Router.HandleFunc("/health", a.Health).Methods("GET")
-  // curl -X POST -F 'file=@user1_key.pub' http://0.0.0.0:8400/addkey/\?user\=user1
+	// curl -X POST -F 'file=@user1_key.pub' http://0.0.0.0:8400/addkey/\?user\=user1
 	a.Router.Path("/addkey/").Methods("POST").HandlerFunc(a.AddKeyFile)
-  // curl http://0.0.0.0:8400/getkey/\?user\=user1
+	// curl http://0.0.0.0:8400/getkey/\?user\=user1
 	a.Router.HandleFunc("/getkey/", a.GetKey).Methods("GET")
 }
 
@@ -82,9 +82,9 @@ func ReadKey(user string) string {
 }
 
 func WriteKey(user string, key string) {
-  if _, err_pathexists := os.Stat(keysPath); os.IsNotExist(err_pathexists) {
-    os.MkdirAll(keysPath, os.ModePerm)
-  }
+	if _, err_pathexists := os.Stat(keysPath); os.IsNotExist(err_pathexists) {
+		os.MkdirAll(keysPath, os.ModePerm)
+	}
 	err := ioutil.WriteFile(keysPath+"/"+user+".pub", []byte(key), 0644)
 	if err != nil {
 		fmt.Printf("Writing to File failed with error %s\n", err)
