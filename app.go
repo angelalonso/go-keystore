@@ -57,14 +57,19 @@ func (a *App) AddKeyFile(w http.ResponseWriter, r *http.Request) {
 	// I normally have a struct defined and unmarshal into a struct, but this will
 	// work as an example
 	contents := Buf.String()
-	WriteKey(user[0], contents)
-	fmt.Println(contents)
-	// I reset the buffer in case I want to use it again
-	// reduces memory allocations in more intense projects
-	Buf.Reset()
-	// do something else
-	// etc write header
-	return
+	if len(user) > 0 {
+		WriteKey(user[0], contents)
+		// I reset the buffer in case I want to use it again
+		// reduces memory allocations in more intense projects
+		Buf.Reset()
+		// do something else
+		// etc write header
+		respondWithJSON(w, http.StatusOK, "Public key for user "+user[0]+" saved")
+	} else {
+		respondWithJSON(w, http.StatusBadRequest, "Error: no user was provided. Try ?user=username")
+	}
+
+	//return
 }
 
 func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {

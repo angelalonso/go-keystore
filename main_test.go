@@ -34,6 +34,8 @@ func TestHealth(t *testing.T) {
 
 	if body := health_rsp.Body.String(); body != `"ok"` {
 		t.Errorf("Expected an 'ok' message. Got %s", body)
+	} else {
+		fmt.Println("- Test OK: health check")
 	}
 }
 
@@ -49,10 +51,25 @@ func TestAddKey(t *testing.T) {
 	addkey_rsp := executeRequest(addkey_req)
 
 	checkResponseCode(t, http.StatusOK, addkey_rsp.Code)
-	if body := addkey_rsp.Body.String(); body != `` {
+	if body := addkey_rsp.Body.String(); body != `"Public key for user test saved"` {
 		t.Errorf("Expected an empty message. Got %s", body)
+	} else {
+		fmt.Println("- Test OK: upload key without keys folder")
 	}
 	// does the key have a username, does it alert if not?
+	addkeynouser_body, writer := MultipartUpload("./test.pub")
+	addkeynouser_req, _ := http.NewRequest("POST", "/addkey/", addkeynouser_body)
+	addkeynouser_req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	addkeynouser_rsp := executeRequest(addkeynouser_req)
+
+	checkResponseCode(t, http.StatusBadRequest, addkeynouser_rsp.Code)
+	addkeynouser_expected := `"Error: no user was provided. Try ?user=username"`
+	if body := addkeynouser_rsp.Body.String(); body != addkeynouser_expected {
+		t.Errorf("Expected: "+addkeynouser_expected+". Got %s", body)
+	} else {
+		fmt.Println("- Test OK: upload key without username")
+	}
 	// does the key have a public key, does it alert if not?
 	// does it save it to a file?
 	// given a testing pair, can it decrypt an encrypted message?
@@ -85,8 +102,8 @@ func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
 
 	file, err := os.Open(path)
 	if err != nil {
-    fmt.Println("Error opening the test key file. Have you created your keypair?")
-    fmt.Println("  just run ssh-keygen -f test -t rsa -N ''")
+		fmt.Println("Error opening the test key file. Have you created your keypair?")
+		fmt.Println("  just run ssh-keygen -f test -t rsa -N ''")
 		panic(err)
 	}
 	defer file.Close()
