@@ -85,7 +85,9 @@ func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println(err)
+    fmt.Println("Error opening the test key file. Have you created your keypair?")
+    fmt.Println("  just run ssh-keygen -f test -t rsa -N ''")
+		panic(err)
 	}
 	defer file.Close()
 	body := &bytes.Buffer{}
