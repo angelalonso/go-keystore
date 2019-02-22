@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -46,7 +47,10 @@ func TestAddKey(t *testing.T) {
 	// does the key have a public key, does it alert if not?
 	addkey_body, writer, addkey_upload_err := MultipartUpload("./test.pub")
   if addkey_upload_err != nil {
-		t.Errorf("There was an error with the uploaded file.\nThis is NOT an application error but make sure the key exists")
+		t.Errorf("There was an error with the uploaded file.\n"+
+      addkey_upload_err.Error()+"\n"+
+      "This is NOT an application error but make sure the key exists\n"+
+      "e.g.: create the key with ssh-keygen -f <filename_without_extension> -t rsa -N ''")
   }
 	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", addkey_body)
 	addkey_req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -70,7 +74,10 @@ func TestAddKey(t *testing.T) {
 	// does the key have a username, does it alert if not?
 	addkeynouser_body, writer, addkeynouser_upload_err := MultipartUpload("./test.pub")
   if addkeynouser_upload_err != nil {
-		t.Errorf("There was an error with the uploaded file.\nThis is NOT an application error but make sure the key exists")
+		t.Errorf("There was an error with the uploaded file.\n"+
+      addkeynouser_upload_err.Error()+"\n"+
+      "This is NOT an application error but make sure the key exists\n"+
+      "e.g.: create the key with ssh-keygen -f <filename_without_extension> -t rsa -N ''")
   }
 	addkeynouser_req, _ := http.NewRequest("POST", "/addkey/", addkeynouser_body)
 	addkeynouser_req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -90,6 +97,19 @@ func TestAddKey(t *testing.T) {
 // test getting a key
 func TestGetKey(t *testing.T) {
 	// do we get a key?
+	getkey_req, _ := http.NewRequest("GET", "/getkey/?user=test", nil)
+	getkey_rsp := executeRequest(getkey_req)
+  buf, _ := ioutil.ReadFile(keysPath+"/test.pub")
+  getkey_expected := `"`+string(NormalizeNewline([]byte(buf)))+`"`
+
+  NormalizeNewline([]byte(getkey_rsp.Body.String()))
+	checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
+
+	if body := getkey_rsp.Body.String(); body != getkey_expected {
+		t.Errorf("Expected "+getkey_expected+". Got %s", body)
+	} else {
+		fmt.Println("- Test OK: Get an Existing Key")
+	}
 	// given a testing pair, can it decrypt an encrypted message?
 }
 
@@ -141,3 +161,14 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
 	}
 }
+
+func NormalizeNewline(d []byte) []byte {
+	// replace CR LF \r\n (windows) with LF \n (unix)
+  fmt.Println(d)
+	d = bytes.Replace(d, []byte{13, 10}, []byte{10}, -1)
+	// replace CF \r (mac) with LF \n (unix)
+	d = bytes.Replace(d, []byte{13}, []byte{10}, -1)
+	return d
+}
+
+
