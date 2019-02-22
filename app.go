@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+  "path/filepath"
 )
 
 type App struct {
@@ -35,6 +36,8 @@ func (a *App) initializeRoutes() {
 	a.Router.Path("/addkey/").Methods("POST").HandlerFunc(a.AddKeyFile)
 	// curl http://0.0.0.0:8400/getkey/\?user\=user1
 	a.Router.HandleFunc("/getkey/", a.GetKey).Methods("GET")
+	// curl http://0.0.0.0:8400/list
+	a.Router.HandleFunc("/list", a.GetKeyList).Methods("GET")
 }
 
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +79,19 @@ func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.URL.Query()["user"]
 	fmt.Println(ReadKey(user[0]))
 	respondWithJSON(w, http.StatusOK, ReadKey(user[0]))
+}
+
+func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
+	files, _ := ioutil.ReadDir(keysPath)
+  res := []string{}
+  for _, f := range files {
+    if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub") {
+      var extension = filepath.Ext(f.Name())
+      var name = f.Name()[0:len(f.Name())-len(extension)]
+      res = append(res, name)
+    }
+  }
+  fmt.Println(res)
 }
 
 func ReadKey(user string) string {

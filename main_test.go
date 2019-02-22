@@ -44,7 +44,10 @@ func TestAddKey(t *testing.T) {
 	os.RemoveAll(keysPath)
 	// does it upload a key from a file?
 	// does the key have a public key, does it alert if not?
-	addkey_body, writer := MultipartUpload("./test.pub")
+	addkey_body, writer, addkey_upload_err := MultipartUpload("./test.pub")
+  if addkey_upload_err != nil {
+		t.Errorf("There was an error with the uploaded file.\nThis is NOT an application error but make sure the key exists")
+  }
 	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", addkey_body)
 	addkey_req.Header.Set("Content-Type", writer.FormDataContentType())
 	addkey_rsp := executeRequest(addkey_req)
@@ -65,7 +68,10 @@ func TestAddKey(t *testing.T) {
   }
 
 	// does the key have a username, does it alert if not?
-	addkeynouser_body, writer := MultipartUpload("./test.pub")
+	addkeynouser_body, writer, addkeynouser_upload_err := MultipartUpload("./test.pub")
+  if addkeynouser_upload_err != nil {
+		t.Errorf("There was an error with the uploaded file.\nThis is NOT an application error but make sure the key exists")
+  }
 	addkeynouser_req, _ := http.NewRequest("POST", "/addkey/", addkeynouser_body)
 	addkeynouser_req.Header.Set("Content-Type", writer.FormDataContentType())
 	addkeynouser_rsp := executeRequest(addkeynouser_req)
@@ -102,14 +108,14 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	return rr
 }
 
-func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
+func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer, error) {
 	paramName := "file"
 	params := map[string]string{}
+  var out_err error
 
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println("Error opening the test key file. Have you created your keypair?")
-		fmt.Println("  just run ssh-keygen -f test -t rsa -N ''")
+    out_err = err
 		//panic(err)
 	}
 	defer file.Close()
@@ -127,7 +133,7 @@ func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	return body, writer
+	return body, writer, out_err
 }
 
 func checkResponseCode(t *testing.T, expected, actual int) {
