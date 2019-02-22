@@ -24,9 +24,8 @@ func TestMain(m *testing.M) {
 
 }
 
-// test the health URL
+// test the health URL returns something proper
 func TestHealth(t *testing.T) {
-	// Health returns something proper
 	health_req, _ := http.NewRequest("GET", "/health", nil)
 	health_rsp := executeRequest(health_req)
 
@@ -44,34 +43,41 @@ func TestAddKey(t *testing.T) {
 	// Delete the keys folder, does it recreate it?
 	os.RemoveAll(keysPath)
 	// does it upload a key from a file?
+	// does the key have a public key, does it alert if not?
 	addkey_body, writer := MultipartUpload("./test.pub")
 	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", addkey_body)
 	addkey_req.Header.Set("Content-Type", writer.FormDataContentType())
-
 	addkey_rsp := executeRequest(addkey_req)
 
 	checkResponseCode(t, http.StatusOK, addkey_rsp.Code)
+
 	if body := addkey_rsp.Body.String(); body != `"Public key for user test saved"` {
 		t.Errorf("Expected an empty message. Got %s", body)
 	} else {
 		fmt.Println("- Test OK: upload key without keys folder")
 	}
+
+	// does it save it to a file?
+  if _, err := os.Stat("./keys/test.pub"); os.IsNotExist(err) {
+		t.Errorf("Expected a new file. No file was written")
+	} else {
+		fmt.Println("- Test OK: writing key to local file")
+  }
+
 	// does the key have a username, does it alert if not?
 	addkeynouser_body, writer := MultipartUpload("./test.pub")
 	addkeynouser_req, _ := http.NewRequest("POST", "/addkey/", addkeynouser_body)
 	addkeynouser_req.Header.Set("Content-Type", writer.FormDataContentType())
-
 	addkeynouser_rsp := executeRequest(addkeynouser_req)
 
 	checkResponseCode(t, http.StatusBadRequest, addkeynouser_rsp.Code)
+
 	addkeynouser_expected := `"Error: no user was provided. Try ?user=username"`
 	if body := addkeynouser_rsp.Body.String(); body != addkeynouser_expected {
 		t.Errorf("Expected: "+addkeynouser_expected+". Got %s", body)
 	} else {
 		fmt.Println("- Test OK: upload key without username")
 	}
-	// does the key have a public key, does it alert if not?
-	// does it save it to a file?
 	// given a testing pair, can it decrypt an encrypted message?
 }
 
@@ -104,7 +110,7 @@ func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer) {
 	if err != nil {
 		fmt.Println("Error opening the test key file. Have you created your keypair?")
 		fmt.Println("  just run ssh-keygen -f test -t rsa -N ''")
-		panic(err)
+		//panic(err)
 	}
 	defer file.Close()
 	body := &bytes.Buffer{}
