@@ -83,7 +83,7 @@ func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
 	files, _ := ioutil.ReadDir(keysPath)
 	res := []string{}
 	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub") {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub.pem") {
 			var extension = filepath.Ext(f.Name())
 			var name = f.Name()[0 : len(f.Name())-len(extension)]
 			res = append(res, name)
@@ -93,7 +93,7 @@ func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReadKey(user string) string {
-	dat, err := ioutil.ReadFile(keysPath + "/" + user + ".pub")
+	dat, err := ioutil.ReadFile(keysPath + "/" + user + ".pub.pem")
 	if err != nil {
 		fmt.Printf("Reading from File failed with error %s\n", err)
 	}

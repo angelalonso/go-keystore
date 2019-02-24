@@ -7,17 +7,46 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	//"encoding/json"
 	"encoding/pem"
 	"fmt"
-	//"net/http"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 )
 
 // test getting a key
+
 func TestGetKey(t *testing.T) {
 	// do we get a key?
 	// given a testing pair, can it decrypt an encrypted message?
+
+	manualKey := loadPublicPemKey("./testpub.pem")
+
+	getkey_req, _ := http.NewRequest("GET", "/getkey/?user=test", nil)
+	getkey_rsp := executeRequest(getkey_req)
+
+	checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
+
+	fmt.Println(x509.MarshalPKCS1PublicKey(manualKey))
+
+	body := strings.Replace(getkey_rsp.Body.String(), `\n`, "\n", -1)
+	body = body[1 : len(body)-1]
+	testbody, err := x509.ParsePKCS1PublicKey([]byte(body))
+	fmt.Println(err)
+	//test := x509.MarshalPKCS1PublicKey(manualKey)
+	if testbody != manualKey {
+		// https://stackoverflow.com/questions/32042989/go-lang-differentiate-n-and-line-break?rq=1
+		fmt.Println("--------------------------------")
+		fmt.Println(testbody)
+		fmt.Println("--------------------------------")
+		fmt.Println(manualKey)
+		fmt.Println("--------------------------------")
+		t.Errorf("Expected Got ")
+	} else {
+		fmt.Println("- Test OK: upload key without keys folder")
+	}
 
 	// Let's test decryption
 	/*
