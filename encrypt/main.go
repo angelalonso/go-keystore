@@ -1,73 +1,106 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/md5"
+	"bufio"
 	"crypto/rand"
-	"encoding/hex"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 )
 
-func createHash(key string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(key))
-	return hex.EncodeToString(hasher.Sum(nil))
+func loadRSAPrivatePemKey(fileName string) *rsa.PrivateKey {
+	privateKeyFile, err := os.Open(fileName)
+
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+
+	pemfileinfo, _ := privateKeyFile.Stat()
+	var size int64 = pemfileinfo.Size()
+	pembytes := make([]byte, size)
+	buffer := bufio.NewReader(privateKeyFile)
+	_, err = buffer.Read(pembytes)
+
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	data, _ := pem.Decode([]byte(pembytes))
+	privateKeyFile.Close()
+	privateKeyImported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	return privateKeyImported
 }
 
-func encrypt(data []byte, passphrase string) []byte {
-	block, _ := aes.NewCipher([]byte(createHash(passphrase)))
-	gcm, err := cipher.NewGCM(block)
+func loadPublicPemKey(fileName string) *rsa.PublicKey {
+
+	publicKeyFile, err := os.Open(fileName)
 	if err != nil {
-		panic(err.Error())
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
 	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		panic(err.Error())
+
+	pemfileinfo, _ := publicKeyFile.Stat()
+
+	size := pemfileinfo.Size()
+	pembytes := make([]byte, size)
+	buffer := bufio.NewReader(publicKeyFile)
+	_, err = buffer.Read(pembytes)
+	data, _ := pem.Decode([]byte(pembytes))
+	publicKeyFile.Close()
+	publicKeyFileImported, err := x509.ParsePKCS1PublicKey(data.Bytes)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
 	}
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-	return ciphertext
+	return publicKeyFileImported
 }
 
-func decrypt(data []byte, passphrase string) []byte {
-	key := []byte(createHash(passphrase))
-	block, err := aes.NewCipher(key)
+func EncryptOAEP(secretMessage string, pubkey rsa.PublicKey) string {
+	label := []byte("OAEP Encrypted")
+	// crypto/rand.Reader is a good source of entropy for randomizing the
+	// encryption function.
+	rng := rand.Reader
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &pubkey, []byte(secretMessage), label)
 	if err != nil {
-		panic(err.Error())
+		fmt.Fprintf(os.Stderr, "Error from encryption: %s\n", err)
+		return "Error from encryption"
 	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(err.Error())
-	}
-	nonceSize := gcm.NonceSize()
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		panic(err.Error())
-	}
-	return plaintext
+	return base64.StdEncoding.EncodeToString(ciphertext)
 }
 
-func encryptFile(filename string, data []byte, passphrase string) {
-	f, _ := os.Create(filename)
-	defer f.Close()
-	f.Write(encrypt(data, passphrase))
-}
+func DecryptOAEP(cipherText string, privKey rsa.PrivateKey) string {
+	ct, _ := base64.StdEncoding.DecodeString(cipherText)
+	label := []byte("OAEP Encrypted")
 
-func decryptFile(filename string, passphrase string) []byte {
-	data, _ := ioutil.ReadFile(filename)
-	return decrypt(data, passphrase)
+	// crypto/rand.Reader is a good source of entropy for blinding the RSA
+	// operation.
+	rng := rand.Reader
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &privKey, ct, label)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error from decryption: %s\n", err)
+		return "Error from Decryption"
+	}
+	fmt.Printf("Plaintext: %s\n", string(plaintext))
+
+	return string(plaintext)
 }
 
 func main() {
-	fmt.Println("Starting the application...")
-	ciphertext := encrypt([]byte("Hello World"), "password")
-	fmt.Printf("Encrypted: %x\n", ciphertext)
-	plaintext := decrypt(ciphertext, "password")
-	fmt.Printf("Decrypted: %s\n", plaintext)
-	encryptFile("sample.txt", []byte("Hello World"), "password1")
-	fmt.Println(string(decryptFile("sample.txt", "password1")))
+	// https://8gwifi.org/docs/go-rsa.jsp
+	secretMessage := "Hello 8gwifi.org"
+	// to generate: openssl genrsa -out manualpriv.pem 4096
+	manualRSAPrivateKey := *loadRSAPrivatePemKey("./manualpriv.pem")
+	// to generate: ssh-keygen -f manualpriv.pem -e -m pem > manualpub.pem
+	manualPublicKey := loadPublicPemKey("./manualpub.pem")
+	encryptedNewMessage := EncryptOAEP(secretMessage, *manualPublicKey)
+	DecryptOAEP(encryptedNewMessage, manualRSAPrivateKey)
 }
