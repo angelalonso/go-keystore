@@ -17,8 +17,10 @@ func TestAddKey(t *testing.T) {
 	// Delete the keys folder, does it recreate it?
 	os.RemoveAll(keysPath)
 	// does it upload a key from a file?
-	// does the key have a public key, does it alert if not?
-	addkey_body, writer, addkey_upload_err := MultipartUpload("./test.pub")
+	// TODO: Alert properly when the key is not a public one
+
+	//manualKey := loadPublicPemKey("./testpub.pem")
+	addkey_body, writer, addkey_upload_err := MultipartUpload("./testpub.pem")
 	if addkey_upload_err != nil {
 		t.Errorf("There was an error with the uploaded file.\n" +
 			addkey_upload_err.Error() + "\n" +
@@ -38,14 +40,14 @@ func TestAddKey(t *testing.T) {
 	}
 
 	// does it save it to a file?
-	if _, err := os.Stat("./keys/test.pub"); os.IsNotExist(err) {
+	if _, err := os.Stat("./keys/test.pub.pem"); os.IsNotExist(err) {
 		t.Errorf("Expected a new file. No file was written")
 	} else {
 		fmt.Println("- Test OK: writing key to local file")
 	}
 
 	// does the key have a username, does it alert if not?
-	addkeynouser_body, writer, addkeynouser_upload_err := MultipartUpload("./test.pub")
+	addkeynouser_body, writer, addkeynouser_upload_err := MultipartUpload("./testpub.pem")
 	if addkeynouser_upload_err != nil {
 		t.Errorf("There was an error with the uploaded file.\n" +
 			addkeynouser_upload_err.Error() + "\n" +

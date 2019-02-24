@@ -1,17 +1,19 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
-  "path/filepath"
 )
 
 type App struct {
@@ -33,7 +35,7 @@ func (a *App) initializeRoutes() {
 	//  curl http://0.0.0.0:8400/health
 	a.Router.HandleFunc("/health", a.Health).Methods("GET")
 	// curl -X POST -F 'file=@user1_key.pub' http://0.0.0.0:8400/addkey/\?user\=user1
-	a.Router.Path("/addkey/").Methods("POST").HandlerFunc(a.AddKeyFile)
+	a.Router.Path("/addkey/").Methods("POST").HandlerFunc(a.AddPubKeyFile)
 	// curl http://0.0.0.0:8400/getkey/\?user\=user1
 	a.Router.HandleFunc("/getkey/", a.GetKey).Methods("GET")
 	// curl http://0.0.0.0:8400/list
@@ -44,35 +46,31 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "ok")
 }
 
-func (a *App) AddKeyFile(w http.ResponseWriter, r *http.Request) {
-	//https://stackoverflow.com/questions/40684307/how-can-i-receive-an-uploaded-file-using-a-golang-net-http-server
-	user, _ := r.URL.Query()["user"]
-	var Buf bytes.Buffer
-	file, header, err := r.FormFile("file")
+func loadPublicPemKey(fileName string) *rsa.PublicKey {
+
+	publicKeyFile, err := os.Open(fileName)
 	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	strings.Split(header.Filename, ".")
-	// Copy the file data to my buffer
-	io.Copy(&Buf, file)
-	// do something with the contents...
-	// I normally have a struct defined and unmarshal into a struct, but this will
-	// work as an example
-	contents := Buf.String()
-	if len(user) > 0 {
-		WriteKey(user[0], contents)
-		// I reset the buffer in case I want to use it again
-		// reduces memory allocations in more intense projects
-		Buf.Reset()
-		// do something else
-		// etc write header
-		respondWithJSON(w, http.StatusOK, "Public key for user "+user[0]+" saved")
-	} else {
-		respondWithJSON(w, http.StatusBadRequest, "Error: no user was provided. Try ?user=username")
+		fmt.Println("Fatal error ", err.Error())
+		fmt.Println(" - You can generate the key pair like this:")
+		fmt.Println("     openssl genrsa -out testpriv.pem 4096")
+		fmt.Println("     ssh-keygen -f testpriv.pem -e -m pem > testpub.pem")
+		os.Exit(1)
 	}
 
-	//return
+	pemfileinfo, _ := publicKeyFile.Stat()
+
+	size := pemfileinfo.Size()
+	pembytes := make([]byte, size)
+	buffer := bufio.NewReader(publicKeyFile)
+	_, err = buffer.Read(pembytes)
+	data, _ := pem.Decode([]byte(pembytes))
+	publicKeyFile.Close()
+	publicKeyFileImported, err := x509.ParsePKCS1PublicKey(data.Bytes)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	return publicKeyFileImported
 }
 
 func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
@@ -83,15 +81,15 @@ func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
 	files, _ := ioutil.ReadDir(keysPath)
-  res := []string{}
-  for _, f := range files {
-    if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub") {
-      var extension = filepath.Ext(f.Name())
-      var name = f.Name()[0:len(f.Name())-len(extension)]
-      res = append(res, name)
-    }
-  }
-  fmt.Println(res)
+	res := []string{}
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub") {
+			var extension = filepath.Ext(f.Name())
+			var name = f.Name()[0 : len(f.Name())-len(extension)]
+			res = append(res, name)
+		}
+	}
+	fmt.Println(res)
 }
 
 func ReadKey(user string) string {
@@ -101,17 +99,6 @@ func ReadKey(user string) string {
 	}
 	return string(dat)
 }
-
-func WriteKey(user string, key string) {
-	if _, err_pathexists := os.Stat(keysPath); os.IsNotExist(err_pathexists) {
-		os.MkdirAll(keysPath, os.ModePerm)
-	}
-	err := ioutil.WriteFile(keysPath+"/"+user+".pub", []byte(key), 0644)
-	if err != nil {
-		fmt.Printf("Writing to File failed with error %s\n", err)
-	}
-}
-
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	//https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
 	response, _ := json.Marshal(payload)

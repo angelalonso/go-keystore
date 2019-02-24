@@ -1,16 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
-	"errors"
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	//"net/http"
+	"os"
 	"testing"
 )
 
@@ -18,32 +18,28 @@ import (
 func TestGetKey(t *testing.T) {
 	// do we get a key?
 	// given a testing pair, can it decrypt an encrypted message?
-	getkey_req, _ := http.NewRequest("GET", "/getkey/?user=test", nil)
-	getkey_rsp := executeRequest(getkey_req)
+
+	// Let's test decryption
 	/*
-		buf, _ := ioutil.ReadFile(keysPath + "/test.pub")
-		getkey_expected := `"` + string(NormalizeNewline([]byte(buf))) + `"`
+		secretMessage := "Testing ~n &/() Keys is not enough§"
+		testPublicKey := loadPublicPemKey("./testpub.pem")
+		encryptedMessage := EncryptOAEP(secretMessage, *testPublicKey)
+		testRSAPrivateKey := *loadRSAPrivatePemKey("./testpriv.pem")
+		decryptedMessage := DecryptOAEP(encryptedMessage, testRSAPrivateKey)
+		fmt.Println(decryptedMessage)
+		//TODO: test here that the private key can decrypt what was encrypted with the public one
 
-		NormalizeNewline([]byte(getkey_rsp.Body.String()))
+		getkey_req, _ := http.NewRequest("GET", "/getkey/?user=test", nil)
+		getkey_rsp := executeRequest(getkey_req)
+
 		checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
+
+		if body := getkey_rsp.Body.String(); body != `"Public key for user test saved"` {
+			t.Errorf("Expected an empty message. Got %s", body)
+		} else {
+			fmt.Println("- Test OK: upload key without keys folder")
+		}
 	*/
-	pemString, _ := ioutil.ReadFile("./test")
-	encString, _ := ioutil.ReadFile("./encrypted.txt")
-	test, _ := ParseRsaPrivateKeyFromPemStr(string(pemString))
-
-	//getkey_expected := ""
-	var label = flag.String("label", "", "Label to use (filename by default)")
-	getkey_expected, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, test, encString, []byte(*label))
-	fmt.Println(encString)
-	fmt.Println(err)
-
-	checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
-	if body := getkey_rsp.Body.String(); body != string(getkey_expected) {
-		t.Errorf("Expected "+string(getkey_expected)+". Got %s", body)
-	} else {
-		fmt.Println("- Test OK: Get an Existing Key")
-	}
-	// given a testing pair, can it decrypt an encrypted message?
 }
 
 // test key registry
@@ -54,17 +50,62 @@ func TestKeyStore(t *testing.T) {
 	// clean up all keys
 }
 
-// https://gist.github.com/miguelmota/3ea9286bd1d3c2a985b67cac4ba2130a
-func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privPEM))
-	if block == nil {
-		return nil, errors.New("failed to parse PEM block containing the key")
-	}
+func loadRSAPrivatePemKey(fileName string) *rsa.PrivateKey {
+	privateKeyFile, err := os.Open(fileName)
 
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		fmt.Println("Fatal error ", err.Error())
+		fmt.Println(" - You can generate the key pair like this:")
+		fmt.Println("     openssl genrsa -out testpriv.pem 4096")
+		fmt.Println("     ssh-keygen -f testpriv.pem -e -m pem > testpub.pem")
+		os.Exit(1)
 	}
 
-	return priv, nil
+	pemfileinfo, _ := privateKeyFile.Stat()
+	var size int64 = pemfileinfo.Size()
+	pembytes := make([]byte, size)
+	buffer := bufio.NewReader(privateKeyFile)
+	_, err = buffer.Read(pembytes)
+
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	data, _ := pem.Decode([]byte(pembytes))
+	privateKeyFile.Close()
+	privateKeyImported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	return privateKeyImported
+}
+
+func EncryptOAEP(secretMessage string, pubkey rsa.PublicKey) string {
+	label := []byte("OAEP Encrypted")
+	// crypto/rand.Reader is a good source of entropy for randomizing the
+	// encryption function.
+	rng := rand.Reader
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &pubkey, []byte(secretMessage), label)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error from encryption: %s\n", err)
+		return "Error from encryption"
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext)
+}
+
+func DecryptOAEP(cipherText string, privKey rsa.PrivateKey) string {
+	ct, _ := base64.StdEncoding.DecodeString(cipherText)
+	label := []byte("OAEP Encrypted")
+
+	// crypto/rand.Reader is a good source of entropy for blinding the RSA
+	// operation.
+	rng := rand.Reader
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &privKey, ct, label)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error from decryption: %s\n", err)
+		return "Error from Decryption"
+	}
+
+	return string(plaintext)
 }
