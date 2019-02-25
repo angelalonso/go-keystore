@@ -29,21 +29,13 @@ func TestGetKey(t *testing.T) {
 
 	checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
 
-	fmt.Println(x509.MarshalPKCS1PublicKey(manualKey))
-
 	body := strings.Replace(getkey_rsp.Body.String(), `\n`, "\n", -1)
 	body = body[1 : len(body)-1]
-	testbody, err := x509.ParsePKCS1PublicKey([]byte(body))
-	fmt.Println(err)
-	//test := x509.MarshalPKCS1PublicKey(manualKey)
-	if testbody != manualKey {
+	bodyKey := loadPublicPemKeyString(body)
+
+	if bodyKey.N.Cmp(manualKey.N) != 0 || bodyKey.E != manualKey.E {
 		// https://stackoverflow.com/questions/32042989/go-lang-differentiate-n-and-line-break?rq=1
-		fmt.Println("--------------------------------")
-		fmt.Println(testbody)
-		fmt.Println("--------------------------------")
-		fmt.Println(manualKey)
-		fmt.Println("--------------------------------")
-		t.Errorf("Expected Got ")
+		t.Errorf("Expected:\n %s and %s.\n Got:\n %s and %s", manualKey.N.String(), string(manualKey.E), bodyKey.N.String(), string(bodyKey.E))
 	} else {
 		fmt.Println("- Test OK: upload key without keys folder")
 	}

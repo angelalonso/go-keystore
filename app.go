@@ -73,6 +73,20 @@ func loadPublicPemKey(fileName string) *rsa.PublicKey {
 	return publicKeyFileImported
 }
 
+func loadPublicPemKeyString(key string) *rsa.PublicKey {
+
+	size := len(key)
+	pembytes := make([]byte, size)
+	buffer := strings.NewReader(key)
+	_, err := buffer.Read(pembytes)
+	data, _ := pem.Decode([]byte(pembytes))
+	publicKeyFileImported, err := x509.ParsePKCS1PublicKey(data.Bytes)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	return publicKeyFileImported
+}
 func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.URL.Query()["user"]
 	fmt.Println(ReadKey(user[0]))
