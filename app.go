@@ -8,11 +8,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -22,15 +20,13 @@ type App struct {
 
 const keysPath = "./keys"
 
+// Initializes the API server
 func (a *App) Initialize() {
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
 
-func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, a.Router))
-}
-
+// Initializes the routes for the API server
 func (a *App) initializeRoutes() {
 	//  curl http://0.0.0.0:8400/health
 	a.Router.HandleFunc("/health", a.Health).Methods("GET")
@@ -42,12 +38,22 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/list", a.GetKeyList).Methods("GET")
 }
 
+// Runs the server
+func (a *App) Run(addr string) {
+	log.Fatal(http.ListenAndServe(addr, a.Router))
+}
+
+// Routes
+
+// API route: Health route just returns ok
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "ok")
 }
 
-func loadPublicPemKey(fileName string) *rsa.PublicKey {
+// Other functions
 
+// Loads a public key from a file
+func loadPublicPemKey(fileName string) *rsa.PublicKey {
 	publicKeyFile, err := os.Open(fileName)
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
@@ -73,8 +79,8 @@ func loadPublicPemKey(fileName string) *rsa.PublicKey {
 	return publicKeyFileImported
 }
 
+// Loads a public key from a string
 func loadPublicPemKeyString(key string) *rsa.PublicKey {
-
 	size := len(key)
 	pembytes := make([]byte, size)
 	buffer := strings.NewReader(key)
@@ -87,32 +93,7 @@ func loadPublicPemKeyString(key string) *rsa.PublicKey {
 	}
 	return publicKeyFileImported
 }
-func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
-	user, _ := r.URL.Query()["user"]
-	fmt.Println(ReadKey(user[0]))
-	respondWithJSON(w, http.StatusOK, ReadKey(user[0]))
-}
 
-func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
-	files, _ := ioutil.ReadDir(keysPath)
-	res := []string{}
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub.pem") {
-			var extension = filepath.Ext(f.Name())
-			var name = f.Name()[0 : len(f.Name())-len(extension)]
-			res = append(res, name)
-		}
-	}
-	fmt.Println(res)
-}
-
-func ReadKey(user string) string {
-	dat, err := ioutil.ReadFile(keysPath + "/" + user + ".pub.pem")
-	if err != nil {
-		fmt.Printf("Reading from File failed with error %s\n", err)
-	}
-	return string(dat)
-}
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	//https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
 	response, _ := json.Marshal(payload)

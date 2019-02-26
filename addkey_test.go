@@ -20,15 +20,18 @@ func TestAddKey(t *testing.T) {
 	// TODO: Alert properly when the key is not a public one
 
 	//manualKey := loadPublicPemKey("./testpub.pem")
-	addkey_body, writer, addkey_upload_err := MultipartUpload("./testpub.pem")
+	addkey_body, addkey_writer, addkey_upload_err := MultipartUpload("./testpub.pem")
 	if addkey_upload_err != nil {
 		t.Errorf("There was an error with the uploaded file.\n" +
 			addkey_upload_err.Error() + "\n" +
 			"This is NOT an application error but make sure the key exists\n" +
-			"e.g.: create the key with ssh-keygen -f <filename_without_extension> -t rsa -N ''")
+      "e.g.: create the key with:\n" +
+		  "      openssl genrsa -out testpriv.pem 4096\n" +
+		  "      ssh-keygen -f testpriv.pem -e -m pem > testpub.pem\n")
+    return
 	}
 	addkey_req, _ := http.NewRequest("POST", "/addkey/?user=test", addkey_body)
-	addkey_req.Header.Set("Content-Type", writer.FormDataContentType())
+	addkey_req.Header.Set("Content-Type", addkey_writer.FormDataContentType())
 	addkey_rsp := executeRequest(addkey_req)
 
 	checkResponseCode(t, http.StatusOK, addkey_rsp.Code)
@@ -52,7 +55,9 @@ func TestAddKey(t *testing.T) {
 		t.Errorf("There was an error with the uploaded file.\n" +
 			addkeynouser_upload_err.Error() + "\n" +
 			"This is NOT an application error but make sure the key exists\n" +
-			"e.g.: create the key with ssh-keygen -f <filename_without_extension> -t rsa -N ''")
+      "e.g.: create the key with:\n" +
+		  "      openssl genrsa -out testpriv.pem 4096\n" +
+		  "      ssh-keygen -f testpriv.pem -e -m pem > testpub.pem\n")
 	}
 	addkeynouser_req, _ := http.NewRequest("POST", "/addkey/", addkeynouser_body)
 	addkeynouser_req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -84,7 +89,6 @@ func MultipartUpload(path string) (*bytes.Buffer, *multipart.Writer, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		out_err = err
-		//panic(err)
 	}
 	defer file.Close()
 	body := &bytes.Buffer{}
@@ -112,7 +116,6 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 
 func NormalizeNewline(d []byte) []byte {
 	// replace CR LF \r\n (windows) with LF \n (unix)
-	fmt.Println(d)
 	d = bytes.Replace(d, []byte{13, 10}, []byte{10}, -1)
 	// replace CF \r (mac) with LF \n (unix)
 	d = bytes.Replace(d, []byte{13}, []byte{10}, -1)

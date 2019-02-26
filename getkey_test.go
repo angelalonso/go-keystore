@@ -41,26 +41,6 @@ func TestGetKey(t *testing.T) {
 	}
 
 	// Let's test decryption
-	/*
-		secretMessage := "Testing ~n &/() Keys is not enough§"
-		testPublicKey := loadPublicPemKey("./testpub.pem")
-		encryptedMessage := EncryptOAEP(secretMessage, *testPublicKey)
-		testRSAPrivateKey := *loadRSAPrivatePemKey("./testpriv.pem")
-		decryptedMessage := DecryptOAEP(encryptedMessage, testRSAPrivateKey)
-		fmt.Println(decryptedMessage)
-		//TODO: test here that the private key can decrypt what was encrypted with the public one
-
-		getkey_req, _ := http.NewRequest("GET", "/getkey/?user=test", nil)
-		getkey_rsp := executeRequest(getkey_req)
-
-		checkResponseCode(t, http.StatusOK, getkey_rsp.Code)
-
-		if body := getkey_rsp.Body.String(); body != `"Public key for user test saved"` {
-			t.Errorf("Expected an empty message. Got %s", body)
-		} else {
-			fmt.Println("- Test OK: upload key without keys folder")
-		}
-	*/
 }
 
 // test key registry
