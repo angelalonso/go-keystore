@@ -10,13 +10,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+  "io/ioutil"
 )
 
 // test getting a key
 
 func TestGetKey(t *testing.T) {
 	// do we get a key?
-	// given a testing pair, can it decrypt an encrypted message?
 
 	manualKey := keyFile2KeyObject("./testpub.pem")
 
@@ -31,18 +31,41 @@ func TestGetKey(t *testing.T) {
 
 	if bodyKey.N.Cmp(manualKey.N) != 0 || bodyKey.E != manualKey.E {
 		// https://stackoverflow.com/questions/32042989/go-lang-differentiate-n-and-line-break?rq=1
-		t.Errorf("Expected:\n %s and %s.\n Got:\n %s and %s", manualKey.N.String(), string(manualKey.E), bodyKey.N.String(), string(bodyKey.E))
+		t.Errorf("Expected:\n %s and %s\n Got:\n %s and %s", manualKey.N.String(), string(manualKey.E), bodyKey.N.String(), string(bodyKey.E))
 	} else {
 		fmt.Println("- Test OK: upload key without keys folder")
 	}
 
 	// Let's test decryption
+	// given a testing pair, can it decrypt an encrypted message?
 }
 
 // test key registry
 
 func TestKeyStore(t *testing.T) {
 	// list key files vs keys on memory
+	list_req, _ := http.NewRequest("GET", "/list", nil)
+	list_rsp := executeRequest(list_req)
+
+	checkResponseCode(t, http.StatusOK, list_rsp.Code)
+
+	dir_read, _ := ioutil.ReadDir(keysPath)
+  expected_files := []string{}
+  for _, f := range dir_read {
+    if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub.pem") {
+      var extension = ".pub.pem"
+      var name = f.Name()[0 : len(f.Name())-len(extension)]
+      // very hacky but well
+      expected_files = append(expected_files, string(`"`+name+`"`))
+    }
+  }
+  // very hacky too
+  expected_files_string := `[`+strings.Join(expected_files," ")+`]`
+  if list_rsp.Body.String() != expected_files_string {
+    t.Errorf("Expected:\n %s\n Got:\n %s", expected_files_string, list_rsp.Body.String())
+	} else {
+		fmt.Println("- Test OK: get all keys stored in the keys folder")
+  }
 	// remove a key
 	// clean up all keys
 }

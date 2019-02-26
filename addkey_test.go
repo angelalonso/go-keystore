@@ -70,7 +70,6 @@ func TestAddKey(t *testing.T) {
 	} else {
 		fmt.Println("- Test OK: upload key without username")
 	}
-	// given a testing pair, can it decrypt an encrypted message?
 }
 
 //https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
