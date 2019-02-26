@@ -9,7 +9,6 @@ import (
   "io/ioutil"
   "net/http"
   "os"
-  "path/filepath"
 )
 
 // Routes
@@ -24,17 +23,18 @@ func (a *App) GetKey(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetKeyList(w http.ResponseWriter, r *http.Request) {
 	files, dir_err := ioutil.ReadDir(keysPath)
 	if dir_err != nil {
-		fmt.Printf("Reading keys directory failed with error %s\n", dir_err)
+    res := "Reading keys directory failed with error "+ dir_err.Error()
+    respondWithJSON(w, http.StatusInternalServerError, res)
 	} else {
     res := []string{}
     for _, f := range files {
       if !f.IsDir() && strings.HasSuffix(f.Name(), ".pub.pem") {
-        var extension = filepath.Ext(f.Name())
+        var extension = ".pub.pem"
         var name = f.Name()[0 : len(f.Name())-len(extension)]
         res = append(res, name)
       }
     }
-    fmt.Println(res)
+    respondWithJSON(w, http.StatusOK, res)
   }
 }
 
@@ -93,4 +93,3 @@ func pubKeyString2PubKeyObject(key string) *rsa.PublicKey {
 	}
 	return publicKeyImported
 }
-
