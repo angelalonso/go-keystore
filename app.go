@@ -1,17 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
-	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 )
 
 type App struct {
@@ -52,48 +45,7 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 
 // Other functions
 
-// Loads a public key from a file
-func loadPublicPemKey(fileName string) *rsa.PublicKey {
-	publicKeyFile, err := os.Open(fileName)
-	if err != nil {
-		fmt.Println("Fatal error ", err.Error())
-		fmt.Println(" - You can generate the key pair like this:")
-		fmt.Println("     openssl genrsa -out testpriv.pem 4096")
-		fmt.Println("     ssh-keygen -f testpriv.pem -e -m pem > testpub.pem")
-		os.Exit(1)
-	}
-
-	pemfileinfo, _ := publicKeyFile.Stat()
-
-	size := pemfileinfo.Size()
-	pembytes := make([]byte, size)
-	buffer := bufio.NewReader(publicKeyFile)
-	_, err = buffer.Read(pembytes)
-	data, _ := pem.Decode([]byte(pembytes))
-	publicKeyFile.Close()
-	publicKeyFileImported, err := x509.ParsePKCS1PublicKey(data.Bytes)
-	if err != nil {
-		fmt.Println("Fatal error ", err.Error())
-		os.Exit(1)
-	}
-	return publicKeyFileImported
-}
-
-// Loads a public key from a string
-func loadPublicPemKeyString(key string) *rsa.PublicKey {
-	size := len(key)
-	pembytes := make([]byte, size)
-	buffer := strings.NewReader(key)
-	_, err := buffer.Read(pembytes)
-	data, _ := pem.Decode([]byte(pembytes))
-	publicKeyFileImported, err := x509.ParsePKCS1PublicKey(data.Bytes)
-	if err != nil {
-		fmt.Println("Fatal error ", err.Error())
-		os.Exit(1)
-	}
-	return publicKeyFileImported
-}
-
+// Prepares response as a JSON object
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	//https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
 	response, _ := json.Marshal(payload)

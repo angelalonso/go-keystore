@@ -19,7 +19,6 @@ func TestAddKey(t *testing.T) {
 	// does it upload a key from a file?
 	// TODO: Alert properly when the key is not a public one
 
-	//manualKey := loadPublicPemKey("./testpub.pem")
 	addkey_body, addkey_writer, addkey_upload_err := MultipartUpload("./testpub.pem")
 	if addkey_upload_err != nil {
 		t.Errorf("There was an error with the uploaded file.\n" +

@@ -13,38 +13,6 @@ import (
 	"strings"
 )
 
-//TODO: OBSOLETE?
-func (a *App) AddKeyFile(w http.ResponseWriter, r *http.Request) {
-	//https://stackoverflow.com/questions/40684307/how-can-i-receive-an-uploaded-file-using-a-golang-net-http-server
-	user, _ := r.URL.Query()["user"]
-	var Buf bytes.Buffer
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	strings.Split(header.Filename, ".")
-	// Copy the file data to my buffer
-	io.Copy(&Buf, file)
-	// do something with the contents...
-	// I normally have a struct defined and unmarshal into a struct, but this will
-	// work as an example
-	contents := Buf.String()
-	if len(user) > 0 {
-		WriteKey(user[0], contents)
-		// I reset the buffer in case I want to use it again
-		// reduces memory allocations in more intense projects
-		Buf.Reset()
-		// do something else
-		// etc write header
-		respondWithJSON(w, http.StatusOK, "Public key for user "+user[0]+" saved")
-	} else {
-		respondWithJSON(w, http.StatusBadRequest, "Error: no user was provided. Try ?user=username")
-	}
-
-	//return
-}
-
 func (a *App) AddPubKeyFile(w http.ResponseWriter, r *http.Request) {
 	//https://stackoverflow.com/questions/40684307/how-can-i-receive-an-uploaded-file-using-a-golang-net-http-server
 	user, _ := r.URL.Query()["user"]
